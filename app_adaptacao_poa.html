@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rede POA — Adaptação Estudantil</title>
+<style>
+  :root {
+    --purple: #7F77DD;
+    --purple-dark: #534AB7;
+    --purple-light: #EEEDFE;
+    --green: #1D9E75;
+    --green-light: #E1F5EE;
+    --amber: #BA7517;
+    --amber-light: #FAEEDA;
+    --text: #1A1A2E;
+    --text-sec: #666;
+    --text-ter: #aaa;
+    --bg: #f4f4f8;
+    --card: #fff;
+    --border: #e8e8f0;
+    --field-bg: #f5f5fa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 24px 16px; font-family: -apple-system, 'Segoe UI', sans-serif; }
+  .device { width: 375px; min-height: 720px; background: #fff; border-radius: 36px; box-shadow: 0 20px 60px rgba(0,0,0,0.18); overflow: hidden; position: relative; display: flex; flex-direction: column; }
+  .status-bar { background: var(--purple); height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
+  .status-bar span { color: #fff; font-size: 13px; font-weight: 600; }
+  .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .screen.active { display: flex; }
+  .header { padding: 18px 20px 16px; flex-shrink: 0; }
+  .header h2 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+  .header p { font-size: 12px; color: rgba(255,255,255,0.75); }
+  .scroll-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+  .scroll-body::-webkit-scrollbar { width: 0; }
+  .tab-bar { display: flex; border-top: 1px solid var(--border); background: #fff; flex-shrink: 0; }
+  .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 8px 4px 10px; gap: 3px; cursor: pointer; border: none; background: none; }
+  .tab-item svg { width: 20px; height: 20px; stroke: var(--text-ter); fill: none; stroke-width: 1.8; }
+  .tab-item span { font-size: 10px; color: var(--text-ter); }
+  .tab-item.active svg { stroke: var(--purple); }
+  .tab-item.active span { color: var(--purple); font-weight: 600; }
+
+  /* FORM */
+  .field-label { font-size: 12px; color: var(--text-sec); margin-bottom: 5px; margin-top: 12px; }
+  .field-label:first-child { margin-top: 0; }
+  input, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--field-bg); font-size: 13px; color: var(--text); outline: none; transition: border .2s; }
+  input:focus, select:focus { border-color: var(--purple); }
+  .btn { width: 100%; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; margin-top: 14px; transition: opacity .2s; }
+  .btn:active { opacity: .8; }
+  .btn-primary { background: var(--purple); color: #fff; }
+  .btn-secondary { background: transparent; border: 1.5px solid var(--purple); color: var(--purple-dark); margin-top: 10px; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-amber { background: var(--amber); color: #fff; }
+  .dots { display: flex; justify-content: center; gap: 6px; margin-top: 14px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
+  .dot.on { background: var(--purple); }
+
+  /* CARDS */
+  .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 12px 14px; margin-bottom: 10px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .card-sub { font-size: 11px; color: var(--text-sec); }
+  .card-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+  .badge-green { background: #EAF3DE; color: #3B6D11; }
+  .badge-purple { background: var(--purple-light); color: var(--purple-dark); }
+  .badge-amber { background: var(--amber-light); color: #854F0B; }
+  .badge-gray { background: #eee; color: #666; }
+
+  /* TAGS */
+  .tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+  .tag { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: #f5f5fa; color: var(--text-sec); cursor: pointer; transition: all .2s; user-select: none; }
+  .tag.on { background: var(--purple); color: #fff; border-color: var(--purple-dark); }
+  .tag.on-green { background: var(--green); color: #fff; border-color: #15734F; }
+  .tag.on-amber { background: var(--amber); color: #fff; border-color: #8A5610; }
+
+  /* GRID */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .grid-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: box-shadow .2s; }
+  .grid-card:hover { box-shadow: 0 2px 12px rgba(127,119,221,.15); }
+  .grid-card svg { width: 26px; height: 26px; stroke: var(--purple); fill: none; stroke-width: 1.8; }
+  .grid-card span { font-size: 12px; font-weight: 600; color: var(--text); }
+
+  /* AVATAR */
+  .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--purple-light); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--purple-dark); flex-shrink: 0; }
+
+  /* ROW ITEM */
+  .row-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .row-item svg { width: 16px; height: 16px; stroke: var(--purple); fill: none; stroke-width: 2; flex-shrink: 0; }
+  .row-item span { font-size: 12px; color: var(--text-sec); }
+
+  /* SECTION TITLE */
+  .sec-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; margin-top: 4px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+  /* SPLASH */
+  .splash-content { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 40px 30px 30px; background: var(--purple); }
+  .splash-icon { width: 72px; height: 72px; background: var(--purple-dark); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+  .splash-icon svg { width: 38px; height: 38px; stroke: #fff; fill: none; stroke-width: 1.8; }
+  .splash-content h1 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px; text-align: center; }
+  .splash-content p { font-size: 13px; color: rgba(255,255,255,.75); text-align: center; margin-bottom: 36px; }
+  .splash-btns { width: 100%; }
+
+  /* STEP INDICATOR */
+  .step-bar { display: flex; gap: 6px; margin-bottom: 16px; }
+  .step-seg { flex: 1; height: 4px; border-radius: 2px; background: #ddd; }
+  .step-seg.done { background: var(--purple); }
+
+  /* PERFIL */
+  .profile-header { background: var(--purple); padding: 20px 20px 24px; text-align: center; }
+  .profile-avatar { width: 70px; height: 70px; border-radius: 50%; background: var(--purple-light); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; color: var(--purple-dark); margin: 0 auto 10px; border: 3px solid rgba(255,255,255,.4); }
+  .profile-name { font-size: 18px; font-weight: 700; color: #fff; }
+  .profile-sub { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 3px; }
+
+  /* BACK BTN */
+  .back-btn { background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,.9); font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+  .back-btn svg { width: 16px; height: 16px; stroke: rgba(255,255,255,.9); fill: none; stroke-width: 2.5; }
+
+  /* DETAIL */
+  .detail-header { padding: 16px 20px 14px; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 40px 20px; color: var(--text-ter); font-size: 13px; }
+
+  /* SUCCESS */
+  .success-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 30px; text-align: center; }
+  .success-icon { width: 72px; height: 72px; border-radius: 50%; background: #EAF3DE; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+  .success-icon svg { width: 36px; height: 36px; stroke: #3B6D11; fill: none; stroke-width: 2.5; }
+  .success-screen h2 { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .success-screen p { font-size: 13px; color: var(--text-sec); line-height: 1.6; }
+
+  .notify-dot { width: 8px; height: 8px; border-radius: 50%; background: #E84040; position: absolute; top: 6px; right: 6px; }
+</style>
+</head>
+<body>
+
+<div class="device">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span id="status-right">&#8226;&#8226;&#8226;</span>
+  </div>
+
+  <!-- ===================== SPLASH ===================== -->
+  <div class="screen active" id="screen-splash">
+    <div class="splash-content">
+      <div class="splash-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>
+      </div>
+      <h1>Bem-vindo(a) a POA</h1>
+      <p>Sua rede de apoio para se adaptar e crescer em Porto Alegre.</p>
+      <div class="splash-btns">
+        <button class="btn btn-primary" style="background:#fff;color:var(--purple-dark);" onclick="goTo('screen-cadastro1')">Criar conta</button>
+        <button class="btn btn-secondary" style="border-color:rgba(255,255,255,.6);color:#fff;" onclick="loginDemo()">Já tenho conta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CADASTRO 1 ===================== -->
+  <div class="screen" id="screen-cadastro1">
+    <div class="header" style="background:var(--purple);">
+      <button class="back-btn" onclick="goTo('screen-splash')">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Voltar
+      </button>
+      <h2>Crie sua conta</h2>
+      <p>Passo 1 de 3 — dados básicos</p>
+    </div>
+    <div class="scroll-body">
+      <div class="step-bar">
+        <div class="step-seg done"></div><div class="step-seg"></div><div class="step-seg"></div>
+      </div>
+      <div class="field-label">Nome completo</div>
+      <input type="text" id="c-nome" placeholder="Ex.: Maria Souza">
+      <div class="field-label">E-mail institucional</div>
+      <input type="email" id="c-email" placeholder="Ex.: maria@pucrs.br">
+      <div class="field-label">Senha</div>
+      <input type="password" id="c-senha" placeholder="Mínimo 6 caracteres">
+      <div class="field-label">Cidade de origem</div>
+      <input type="text" id="c-cidade" placeholder="Ex.: Caxias do Sul, RS">
+      <button class="btn btn-primary" onclick="irCadastro2()">Continuar</button>
+      <div class="dots">
+        <span class="dot on"></span><span class="dot"></span><span class="dot"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CADASTRO 2 ===================== -->
+  <div class="screen" id="screen-cadastro2">
+    <div class="header" style="background:var(--purple);">
+      <button class="back-btn" onclick="goTo('screen-cadastro1')">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Voltar
+      </button>
+      <h2>Dados acadêmicos</h2>
+      <p>Passo 2 de 3</p>
+    </div>
+    <div class="scroll-body">
+      <div class="step-bar">
+        <div class="step-seg done"></div><div class="step-seg done"></div><div class="step-seg"></div>
+      </div>
+      <div class="field-label">Universidade</div>
+      <select id="c-uni">
+        <option value="">Selecione...</option>
+        <option>PUCRS</option><option>UFRGS</option><option>UNISINOS</option><option>ULBRA</option><option>Outra</option>
+      </select>
+      <div class="field-label">Curso</div>
+      <input type="text" id="c-curso" placeholder="Ex.: Direito, Eng. Civil, T.I.">
+      <div class="field-label">Semestre atual</div>
+      <select id="c-semestre">
+        <option value="">Selecione...</option>
+        <option>1º semestre</option><option>2º semestre</option><option>3º semestre</option>
+        <option>4º semestre</option><option>5º semestre ou mais</option>
+      </select>
+      <button class="btn btn-primary" onclick="irCadastro3()">Continuar</button>
+      <div class="dots">
+        <span class="dot"></span><span class="dot on"></span><span class="dot"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CADASTRO 3 ===================== -->
+  <div class="screen" id="screen-cadastro3">
+    <div class="header" style="background:var(--purple);">
+      <button class="back-btn" onclick="goTo('screen-cadastro2')">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Voltar
+      </button>
+      <h2>O que você busca?</h2>
+      <p>Passo 3 de 3 — necessidades</p>
+    </div>
+    <div class="scroll-body">
+      <div class="step-bar">
+        <div class="step-seg done"></div><div class="step-seg done"></div><div class="step-seg done"></div>
+      </div>
+      <p class="sec-title">Selecione suas prioridades</p>
+      <div class="tag-row" id="tags-interesses">
+        <span class="tag" onclick="toggleTag(this)">Padrinho</span>
+        <span class="tag" onclick="toggleTag(this)">Eventos Sociais</span>
+        <span class="tag" onclick="toggleTag(this)">Emprego</span>
+        <span class="tag" onclick="toggleTag(this)">Moradia</span>
+        <span class="tag" onclick="toggleTag(this)">Transporte</span>
+        <span class="tag" onclick="toggleTag(this)">Saúde</span>
+        <span class="tag" onclick="toggleTag(this)">Finanças</span>
+      </div>
+      <div class="field-label" style="margin-top:4px;">Você prefere ser:</div>
+      <select id="c-tipo">
+        <option value="afilhado">Afilhado (quero um padrinho)</option>
+        <option value="padrinho">Padrinho (quero ajudar calouros)</option>
+      </select>
+      <button class="btn btn-primary" onclick="finalizarCadastro()" style="margin-top:18px;">Concluir cadastro</button>
+      <div class="dots">
+        <span class="dot"></span><span class="dot"></span><span class="dot on"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== HOME ===================== -->
+  <div class="screen" id="screen-home">
+    <div class="header" style="background:var(--purple); padding-bottom:20px;">
+      <h2 id="home-greeting">Olá, Maria!</h2>
+      <p>Bem-vinda à sua rede POA</p>
+    </div>
+    <div class="scroll-body">
+      <p class="sec-title">Acesso rápido</p>
+      <div class="grid2">
+        <div class="grid-card" onclick="showTab('padrinho')">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Padrinho</span>
+        </div>
+        <div class="grid-card" onclick="showTab('eventos')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Eventos</span>
+        </div>
+        <div class="grid-card" onclick="showTab('emprego')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          <span>Emprego</span>
+        </div>
+        <div class="grid-card" onclick="showTab('perfil')">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Meu Perfil</span>
+        </div>
+      </div>
+      <p class="sec-title">Próximos eventos</p>
+      <div class="card" onclick="abrirEvento(0)" style="cursor:pointer;">
+        <div class="card-row">
+          <div class="card-title">Happy hour de calouros</div>
+          <span class="badge badge-green">Grátis</span>
+        </div>
+        <div class="card-sub">Sex, 20/06 · 18h · Bar do Campus</div>
+      </div>
+      <div class="card" onclick="abrirEvento(1)" style="cursor:pointer;">
+        <div class="card-row">
+          <div class="card-title">Passeio pelo centro histórico</div>
+          <span class="badge badge-green">Grátis</span>
+        </div>
+        <div class="card-sub">Sáb, 22/06 · 10h · Mercado Público</div>
+      </div>
+      <p class="sec-title" style="margin-top:4px;">Padrinhos em destaque</p>
+      <div class="card" onclick="abrirPadrinho(0)" style="cursor:pointer;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="avatar">CM</div>
+          <div>
+            <div class="card-title">Carlos Menezes</div>
+            <div class="card-sub">Direito · 4º sem. · De Santa Maria</div>
+          </div>
+          <span class="badge badge-green" style="margin-left:auto;">Livre</span>
+        </div>
+      </div>
+    </div>
+    <div class="tab-bar" id="tab-home">
+      <button class="tab-item active" onclick="showTab('home')">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Início</span>
+      </button>
+      <button class="tab-item" onclick="showTab('padrinho')">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Padrinho</span>
+      </button>
+      <button class="tab-item" onclick="showTab('eventos')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Eventos</span>
+      </button>
+      <button class="tab-item" onclick="showTab('emprego')">
+        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        <span>Emprego</span>
+      </button>
+      <button class="tab-item" onclick="showTab('perfil')">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Perfil</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== APADRINHAMENTO ===================== -->
+  <div class="screen" id="screen-padrinho">
+    <div class="header" style="background:var(--purple);">
+      <h2>Padrinhos disponíveis</h2>
+      <p>Veteranos prontos para ajudar</p>
+    </div>
+    <div class="scroll-body">
+      <div class="field-label">Filtrar por curso</div>
+      <select id="filtro-curso" onchange="filtrarPadrinhos()">
+        <option value="">Todos os cursos</option>
+        <option>Direito</option><option>Eng. Civil</option><option>T.I.</option><option>Medicina</option><option>Administração</option>
+      </select>
+      <div style="margin-top:14px;" id="lista-padrinhos"></div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-item" onclick="showTab('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Início</span></button>
+      <button class="tab-item active" onclick="showTab('padrinho')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Padrinho</span></button>
+      <button class="tab-item" onclick="showTab('eventos')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Eventos</span></button>
+      <button class="tab-item" onclick="showTab('emprego')"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Emprego</span></button>
+      <button class="tab-item" onclick="showTab('perfil')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Perfil</span></button>
+    </div>
+  </div>
+
+  <!-- ===================== DETALHE PADRINHO ===================== -->
+  <div class="screen" id="screen-padrinho-detalhe">
+    <div class="detail-header" style="background:var(--purple);">
+      <button class="back-btn" onclick="goTo('screen-padrinho')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Padrinhos</button>
+      <h2 id="pad-nome">Carlos Menezes</h2>
+      <p>Padrinho voluntário</p>
+    </div>
+    <div class="scroll-body">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+        <div class="avatar" id="pad-avatar" style="width:52px;height:52px;font-size:18px;">CM</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);" id="pad-curso-sem">Direito · 4º semestre</div>
+          <div style="font-size:12px;color:var(--text-sec);" id="pad-origem">De Santa Maria, RS</div>
+        </div>
+        <span class="badge badge-green" style="margin-left:auto;" id="pad-status">Disponível</span>
+      </div>
+      <div class="divider"></div>
+      <div class="row-item"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span id="pad-ajuda">Ajuda com rotina acadêmica</span></div>
+      <div class="row-item"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg><span id="pad-local">Conhece bairros e transporte de POA</span></div>
+      <div class="row-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span id="pad-disp">Disponível às terças e quintas</span></div>
+      <div class="divider"></div>
+      <button class="btn btn-primary" id="btn-solicitar" onclick="solicitarPadrinho()">Solicitar apadrinhamento</button>
+      <button class="btn btn-secondary">Enviar mensagem</button>
+    </div>
+  </div>
+
+  <!-- ===================== EVENTOS ===================== -->
+  <div class="screen" id="screen-eventos">
+    <div class="header" style="background:var(--green);">
+      <h2>Eventos</h2>
+      <p>Exclusivos para quem veio de fora</p>
+    </div>
+    <div class="scroll-body">
+      <div class="tag-row" id="filtro-eventos">
+        <span class="tag on-green" onclick="filtrarEventos('Todos',this)">Todos</span>
+        <span class="tag" onclick="filtrarEventos('Social',this)">Social</span>
+        <span class="tag" onclick="filtrarEventos('Cultural',this)">Cultural</span>
+        <span class="tag" onclick="filtrarEventos('Acadêmico',this)">Acadêmico</span>
+      </div>
+      <div id="lista-eventos"></div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-item" onclick="showTab('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Início</span></button>
+      <button class="tab-item" onclick="showTab('padrinho')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Padrinho</span></button>
+      <button class="tab-item active" onclick="showTab('eventos')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Eventos</span></button>
+      <button class="tab-item" onclick="showTab('emprego')"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Emprego</span></button>
+      <button class="tab-item" onclick="showTab('perfil')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Perfil</span></button>
+    </div>
+  </div>
+
+  <!-- ===================== DETALHE EVENTO ===================== -->
+  <div class="screen" id="screen-evento-detalhe">
+    <div class="detail-header" style="background:var(--green);">
+      <button class="back-btn" onclick="goTo('screen-eventos')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Eventos</button>
+      <h2 id="ev-titulo">Happy hour de calouros</h2>
+      <p id="ev-tipo-label">Social · Gratuito</p>
+    </div>
+    <div class="scroll-body">
+      <div class="row-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span id="ev-data">Sexta-feira, 20/06 · 18h</span></div>
+      <div class="row-item"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg><span id="ev-local">Bar do Campus — Av. Ipiranga</span></div>
+      <div class="row-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span id="ev-vagas">23 confirmados · 7 vagas</span></div>
+      <div class="divider"></div>
+      <p class="sec-title">Sobre o evento</p>
+      <p style="font-size:13px;color:var(--text-sec);line-height:1.7;margin-bottom:14px;" id="ev-desc">Encontro descontraído para calouros que vieram de outras cidades. Ótima chance de conhecer gente nova e trocar dicas de POA.</p>
+      <div class="divider"></div>
+      <p class="sec-title">Organizador</p>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div class="avatar" style="background:var(--green-light);color:var(--green);">CA</div>
+        <span style="font-size:13px;color:var(--text-sec);">Centro Acadêmico PUCRS</span>
+      </div>
+      <button class="btn btn-green" id="btn-evento" onclick="confirmarEvento()">Confirmar presença</button>
+    </div>
+  </div>
+
+  <!-- ===================== EMPREGO ===================== -->
+  <div class="screen" id="screen-emprego">
+    <div class="header" style="background:var(--amber);">
+      <h2>Empregabilidade</h2>
+      <p>Vagas e mentorias para você</p>
+    </div>
+    <div class="scroll-body">
+      <div class="tag-row" id="filtro-emprego">
+        <span class="tag on-amber" onclick="filtrarEmprego('Todos',this)">Todos</span>
+        <span class="tag" onclick="filtrarEmprego('Vaga',this)">Vagas</span>
+        <span class="tag" onclick="filtrarEmprego('Mentoria',this)">Mentoria</span>
+        <span class="tag" onclick="filtrarEmprego('Workshop',this)">Workshops</span>
+      </div>
+      <div id="lista-emprego"></div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-item" onclick="showTab('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Início</span></button>
+      <button class="tab-item" onclick="showTab('padrinho')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Padrinho</span></button>
+      <button class="tab-item" onclick="showTab('eventos')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Eventos</span></button>
+      <button class="tab-item active" onclick="showTab('emprego')"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Emprego</span></button>
+      <button class="tab-item" onclick="showTab('perfil')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Perfil</span></button>
+    </div>
+  </div>
+
+  <!-- ===================== DETALHE EMPREGO ===================== -->
+  <div class="screen" id="screen-emprego-detalhe">
+    <div class="detail-header" style="background:var(--amber);">
+      <button class="back-btn" onclick="goTo('screen-emprego')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Empregabilidade</button>
+      <h2 id="emp-titulo">Estágio em T.I.</h2>
+      <p id="emp-sub">TechPOA · Aberta</p>
+    </div>
+    <div class="scroll-body">
+      <div class="row-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span id="emp-local">TechPOA — Porto Alegre, RS</span></div>
+      <div class="row-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span id="emp-carga">20h semanais · Período matutino</span></div>
+      <div class="row-item"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span id="emp-valor">R$ 1.200 + VT + VR</span></div>
+      <div class="divider"></div>
+      <p class="sec-title" id="emp-req-title">Requisitos</p>
+      <p style="font-size:13px;color:var(--text-sec);line-height:1.7;margin-bottom:14px;" id="emp-req">Cursando T.I., Sistemas ou áreas afins. Conhecimentos básicos em Excel e comunicação escrita.</p>
+      <div class="divider"></div>
+      <div class="card" style="display:flex;align-items:center;gap:10px;">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--green);fill:none;stroke-width:2.5;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+        <span style="font-size:13px;color:var(--text-sec);">Horário compatível com a faculdade</span>
+      </div>
+      <button class="btn btn-amber" onclick="candidatar()" style="margin-top:14px;">Candidatar-se</button>
+      <button class="btn btn-secondary" style="border-color:var(--amber);color:var(--amber);">Falar com mentor</button>
+    </div>
+  </div>
+
+  <!-- ===================== PERFIL ===================== -->
+  <div class="screen" id="screen-perfil">
+    <div class="profile-header">
+      <div class="profile-avatar" id="perfil-avatar">MS</div>
+      <div class="profile-name" id="perfil-nome">Maria Souza</div>
+      <div class="profile-sub" id="perfil-curso">Direito · PUCRS</div>
+    </div>
+    <div class="scroll-body">
+      <div class="row-item"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg><span id="perfil-cidade">De Caxias do Sul, RS</span></div>
+      <div class="row-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span id="perfil-tipo">Afilhado — buscando um padrinho</span></div>
+      <div class="divider"></div>
+      <p class="sec-title">Meus interesses</p>
+      <div class="tag-row" id="perfil-tags">
+        <span class="tag on">Padrinho</span>
+        <span class="tag on">Eventos Sociais</span>
+        <span class="tag on">Emprego</span>
+      </div>
+      <div class="divider"></div>
+      <p class="sec-title">Minhas inscrições</p>
+      <div class="card" id="perfil-inscricoes">
+        <div class="card-title">Nenhuma inscrição ainda</div>
+        <div class="card-sub">Confirme presença em eventos para ver aqui</div>
+      </div>
+      <div class="divider"></div>
+      <button class="btn btn-secondary" onclick="logout()">Sair da conta</button>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-item" onclick="showTab('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Início</span></button>
+      <button class="tab-item" onclick="showTab('padrinho')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Padrinho</span></button>
+      <button class="tab-item" onclick="showTab('eventos')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Eventos</span></button>
+      <button class="tab-item" onclick="showTab('emprego')"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Emprego</span></button>
+      <button class="tab-item active" onclick="showTab('perfil')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Perfil</span></button>
+    </div>
+  </div>
+
+</div><!-- /device -->
+
+<script>
+// =================== DADOS ===================
+const padrinhos = [
+  { nome:'Carlos Menezes', curso:'Direito', sem:'4º semestre', origem:'Santa Maria, RS', status:'Disponível', ajuda:'Ajuda com rotina acadêmica e bibliografias', local:'Conhece bairros e transporte de POA', disp:'Disponível às terças e quintas' },
+  { nome:'Ana Flores', curso:'Eng. Civil', sem:'6º semestre', origem:'Pelotas, RS', status:'Disponível', ajuda:'Ajuda com cálculo e projetos de engenharia', local:'Mora no bairro Menino Deus, dicas de moradia', disp:'Disponível às segundas e sextas' },
+  { nome:'Pedro Lemos', curso:'T.I.', sem:'5º semestre', origem:'Bagé, RS', status:'Ocupado', ajuda:'Ajuda com programação e infraestrutura', local:'Conhece a linha de ônibus da região central', disp:'Indisponível no momento' },
+  { nome:'Juliana Costa', curso:'Medicina', sem:'4º semestre', origem:'Uruguaiana, RS', status:'Disponível', ajuda:'Ajuda com adaptação à rotina pesada da medicina', local:'Indicações de restaurantes próximos ao HC', disp:'Disponível aos sábados de manhã' },
+  { nome:'Rafael Mendes', curso:'Administração', sem:'3º semestre', origem:'Rio Grande, RS', status:'Disponível', ajuda:'Ajuda com mercado de trabalho e estágios', local:'Conhece as melhores áreas para morar e estudar', disp:'Disponível às quartas e quintas' },
+];
+
+const eventos = [
+  { titulo:'Happy hour de calouros', tipo:'Social', data:'Sexta-feira, 20/06 · 18h', local:'Bar do Campus — Av. Ipiranga', vagas:'23 confirmados · 7 vagas', desc:'Encontro descontraído para calouros que vieram de outras cidades. Ótima chance de conhecer gente nova e trocar dicas de POA.', preco:'Grátis' },
+  { titulo:'Passeio pelo centro histórico', tipo:'Cultural', data:'Sáb, 22/06 · 10h', local:'Mercado Público de POA', vagas:'14 confirmados · 16 vagas', desc:'Tour guiado pelos pontos históricos e culturais de Porto Alegre, com paradas no Mercado Público, Theatro São Pedro e Cidade Baixa.', preco:'Grátis' },
+  { titulo:'Noite de jogos de tabuleiro', tipo:'Social', data:'Qua, 25/06 · 19h', local:'Sala 204 — Bloco Central', vagas:'18 confirmados · 12 vagas', desc:'Noite de integração com jogos de tabuleiro para estudantes de fora se conhecerem num ambiente descontraído.', preco:'Grátis' },
+  { titulo:'Workshop: Vida em POA', tipo:'Acadêmico', data:'Ter, 18/06 · 19h', local:'Auditório A — PUCRS', vagas:'40 confirmados · 10 vagas', desc:'Workshop com dicas práticas sobre transporte, moradia, saúde e finanças para quem chegou de fora e está se adaptando à cidade.', preco:'Grátis' },
+  { titulo:'Visita ao Parque da Redenção', tipo:'Cultural', data:'Dom, 29/06 · 09h', local:'Portão Principal — Redenção', vagas:'10 confirmados · 20 vagas', desc:'Passeio matinal pelo maior parque urbano de POA, com piquenique coletivo e atividades ao ar livre.', preco:'Grátis' },
+];
+
+const empregos = [
+  { titulo:'Estágio em T.I.', tipo:'Vaga', sub:'TechPOA · Aberta', local:'TechPOA — Porto Alegre, RS', carga:'20h semanais · Período matutino', valor:'R$ 1.200 + VT + VR', req:'Cursando T.I., Sistemas ou áreas afins. Conhecimentos básicos em Excel e comunicação escrita.', reqTitle:'Requisitos' },
+  { titulo:'Aux. Administrativo', tipo:'Vaga', sub:'Escritório Central · Híbrido', local:'Centro de POA — Híbrido', carga:'25h semanais · Flexível', valor:'R$ 950 + VT', req:'Cursando Administração, Direito ou afins. Organização e boa comunicação.', reqTitle:'Requisitos' },
+  { titulo:'Mentoria: Carreira em Direito', tipo:'Mentoria', sub:'João Lima — 5 sessões', local:'Online ou presencial (PUCRS)', carga:'1h por semana · 5 encontros', valor:'Gratuito para alunos de fora', req:'Disponível para calouros do curso de Direito interessados em advocacia e concursos públicos.', reqTitle:'Sobre a mentoria' },
+  { titulo:'Workshop: Como montar seu currículo', tipo:'Workshop', sub:'Gratuito · Online', local:'Google Meet — link enviado por e-mail', carga:'Terça, 18/06 · 19h · 2h de duração', valor:'Gratuito', req:'Aberto a todos os estudantes. Foco em currículo para o mercado do Rio Grande do Sul.', reqTitle:'Sobre o workshop' },
+  { titulo:'Mentoria: Empregabilidade em T.I.', tipo:'Mentoria', sub:'Lucas Barros — 4 sessões', local:'Online', carga:'1h por semana · 4 encontros', valor:'Gratuito para alunos de fora', req:'Para estudantes de T.I., Sistemas e Ciência da Computação interessados em entrar no mercado.', reqTitle:'Sobre a mentoria' },
+  { titulo:'Workshop: LinkedIn para universitários', tipo:'Workshop', sub:'Gratuito · Presencial', local:'Sala 310 — PUCRS', carga:'Seg, 30/06 · 20h · 1h30 de duração', valor:'Gratuito', req:'Aberto a todos. Traga seu notebook se possível.', reqTitle:'Sobre o workshop' },
+];
+
+// =================== ESTADO ===================
+let usuario = { nome:'', email:'', cidade:'', uni:'', curso:'', semestre:'', tipo:'', interesses:[] };
+let eventoAtual = 0, padrinhoAtual = 0, empregoAtual = 0;
+let inscricoes = [], padrinhoSolicitado = false;
+
+// =================== NAVEGAÇÃO ===================
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showTab(tab) {
+  const map = { home:'screen-home', padrinho:'screen-padrinho', eventos:'screen-eventos', emprego:'screen-emprego', perfil:'screen-perfil' };
+  goTo(map[tab]);
+  if (tab === 'padrinho') filtrarPadrinhos();
+  if (tab === 'eventos') renderEventos('Todos');
+  if (tab === 'emprego') renderEmprego('Todos');
+  if (tab === 'perfil') renderPerfil();
+}
+
+// =================== CADASTRO ===================
+function toggleTag(el) { el.classList.toggle('on'); }
+
+function irCadastro2() {
+  const nome = document.getElementById('c-nome').value.trim();
+  const email = document.getElementById('c-email').value.trim();
+  if (!nome || !email) { alert('Preencha nome e e-mail para continuar.'); return; }
+  usuario.nome = nome; usuario.email = email;
+  usuario.cidade = document.getElementById('c-cidade').value.trim() || 'não informada';
+  goTo('screen-cadastro2');
+}
+
+function irCadastro3() {
+  const uni = document.getElementById('c-uni').value;
+  const curso = document.getElementById('c-curso').value.trim();
+  if (!uni || !curso) { alert('Selecione a universidade e informe o curso.'); return; }
+  usuario.uni = uni; usuario.curso = curso;
+  usuario.semestre = document.getElementById('c-semestre').value;
+  goTo('screen-cadastro3');
+}
+
+function finalizarCadastro() {
+  usuario.tipo = document.getElementById('c-tipo').value;
+  const tags = document.querySelectorAll('#tags-interesses .tag.on');
+  usuario.interesses = Array.from(tags).map(t => t.textContent);
+  if (usuario.interesses.length === 0) { alert('Selecione pelo menos um interesse.'); return; }
+  atualizarHome();
+  showTab('home');
+}
+
+function loginDemo() {
+  usuario = { nome:'Maria Souza', email:'maria@pucrs.br', cidade:'Caxias do Sul, RS', uni:'PUCRS', curso:'Direito', semestre:'1º semestre', tipo:'afilhado', interesses:['Padrinho','Eventos Sociais','Emprego'] };
+  atualizarHome();
+  showTab('home');
+}
+
+function atualizarHome() {
+  const primeiro = usuario.nome.split(' ')[0];
+  document.getElementById('home-greeting').textContent = 'Olá, ' + primeiro + '!';
+}
+
+// =================== PADRINHOS ===================
+function filtrarPadrinhos() {
+  const filtro = document.getElementById('filtro-curso').value;
+  const lista = filtro ? padrinhos.filter(p => p.curso === filtro) : padrinhos;
+  const el = document.getElementById('lista-padrinhos');
+  if (lista.length === 0) { el.innerHTML = '<div class="empty">Nenhum padrinho encontrado para esse curso.</div>'; return; }
+  el.innerHTML = lista.map((p, i) => `
+    <div class="card" onclick="abrirPadrinho(${padrinhos.indexOf(p)})" style="cursor:pointer;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="avatar">${iniciais(p.nome)}</div>
+        <div style="flex:1">
+          <div class="card-title">${p.nome}</div>
+          <div class="card-sub">${p.curso} · ${p.sem} · De ${p.origem}</div>
+        </div>
+        <span class="badge ${p.status==='Disponível'?'badge-green':'badge-gray'}">${p.status}</span>
+      </div>
+    </div>`).join('');
+}
+
+function abrirPadrinho(i) {
+  padrinhoAtual = i;
+  const p = padrinhos[i];
+  document.getElementById('pad-nome').textContent = p.nome;
+  document.getElementById('pad-avatar').textContent = iniciais(p.nome);
+  document.getElementById('pad-curso-sem').textContent = p.curso + ' · ' + p.sem;
+  document.getElementById('pad-origem').textContent = 'De ' + p.origem;
+  document.getElementById('pad-status').textContent = p.status;
+  document.getElementById('pad-status').className = 'badge ' + (p.status==='Disponível'?'badge-green':'badge-gray');
+  document.getElementById('pad-ajuda').textContent = p.ajuda;
+  document.getElementById('pad-local').textContent = p.local;
+  document.getElementById('pad-disp').textContent = p.disp;
+  const btn = document.getElementById('btn-solicitar');
+  btn.textContent = 'Solicitar apadrinhamento';
+  btn.disabled = false;
+  btn.style.opacity = '1';
+  goTo('screen-padrinho-detalhe');
+}
+
+function solicitarPadrinho() {
+  const btn = document.getElementById('btn-solicitar');
+  btn.textContent = '✓ Solicitação enviada!';
+  btn.style.background = 'var(--green)';
+  btn.disabled = true;
+}
+
+// =================== EVENTOS ===================
+function filtrarEventos(tipo, el) {
+  document.querySelectorAll('#filtro-eventos .tag').forEach(t => t.classList.remove('on-green'));
+  el.classList.add('on-green');
+  renderEventos(tipo);
+}
+
+function renderEventos(tipo) {
+  const lista = tipo === 'Todos' ? eventos : eventos.filter(e => e.tipo === tipo);
+  const el = document.getElementById('lista-eventos');
+  if (lista.length === 0) { el.innerHTML = '<div class="empty">Nenhum evento encontrado.</div>'; return; }
+  el.innerHTML = lista.map((e, i) => {
+    const idx = eventos.indexOf(e);
+    const inscrito = inscricoes.includes(idx);
+    return `<div class="card" onclick="abrirEvento(${idx})" style="cursor:pointer;">
+      <div class="card-row">
+        <div class="card-title">${e.titulo}</div>
+        <span class="badge ${inscrito?'badge-purple':'badge-green'}">${inscrito?'Inscrito':e.preco}</span>
+      </div>
+      <div class="card-sub">${e.data} · ${e.local}</div>
+    </div>`;
+  }).join('');
+}
+
+function abrirEvento(i) {
+  eventoAtual = i;
+  const e = eventos[i];
+  document.getElementById('ev-titulo').textContent = e.titulo;
+  document.getElementById('ev-tipo-label').textContent = e.tipo + ' · ' + e.preco;
+  document.getElementById('ev-data').textContent = e.data;
+  document.getElementById('ev-local').textContent = e.local;
+  document.getElementById('ev-vagas').textContent = e.vagas;
+  document.getElementById('ev-desc').textContent = e.desc;
+  const btn = document.getElementById('btn-evento');
+  if (inscricoes.includes(i)) {
+    btn.textContent = '✓ Presença confirmada!';
+    btn.style.background = '#3B6D11';
+  } else {
+    btn.textContent = 'Confirmar presença';
+    btn.style.background = 'var(--green)';
+  }
+  goTo('screen-evento-detalhe');
+}
+
+function confirmarEvento() {
+  if (!inscricoes.includes(eventoAtual)) inscricoes.push(eventoAtual);
+  const btn = document.getElementById('btn-evento');
+  btn.textContent = '✓ Presença confirmada!';
+  btn.style.background = '#3B6D11';
+}
+
+// =================== EMPREGO ===================
+function filtrarEmprego(tipo, el) {
+  document.querySelectorAll('#filtro-emprego .tag').forEach(t => t.classList.remove('on-amber'));
+  el.classList.add('on-amber');
+  renderEmprego(tipo);
+}
+
+function renderEmprego(tipo) {
+  const lista = tipo === 'Todos' ? empregos : empregos.filter(e => e.tipo === tipo);
+  const el = document.getElementById('lista-emprego');
+  if (lista.length === 0) { el.innerHTML = '<div class="empty">Nenhum item encontrado.</div>'; return; }
+  el.innerHTML = lista.map(e => {
+    const idx = empregos.indexOf(e);
+    const color = e.tipo==='Vaga'?'badge-green':e.tipo==='Mentoria'?'badge-purple':'badge-amber';
+    return `<div class="card" onclick="abrirEmprego(${idx})" style="cursor:pointer;">
+      <div class="card-row">
+        <div class="card-title">${e.titulo}</div>
+        <span class="badge ${color}">${e.tipo}</span>
+      </div>
+      <div class="card-sub">${e.sub}</div>
+    </div>`;
+  }).join('');
+}
+
+function abrirEmprego(i) {
+  empregoAtual = i;
+  const e = empregos[i];
+  document.getElementById('emp-titulo').textContent = e.titulo;
+  document.getElementById('emp-sub').textContent = e.sub;
+  document.getElementById('emp-local').textContent = e.local;
+  document.getElementById('emp-carga').textContent = e.carga;
+  document.getElementById('emp-valor').textContent = e.valor;
+  document.getElementById('emp-req').textContent = e.req;
+  document.getElementById('emp-req-title').textContent = e.reqTitle;
+  goTo('screen-emprego-detalhe');
+}
+
+function candidatar() {
+  const btn = event.target;
+  btn.textContent = '✓ Candidatura enviada!';
+  btn.style.background = '#3B6D11';
+  btn.disabled = true;
+}
+
+// =================== PERFIL ===================
+function renderPerfil() {
+  const nome = usuario.nome || 'Maria Souza';
+  const ini = iniciais(nome);
+  document.getElementById('perfil-avatar').textContent = ini;
+  document.getElementById('perfil-nome').textContent = nome;
+  document.getElementById('perfil-curso').textContent = (usuario.curso||'Direito') + ' · ' + (usuario.uni||'PUCRS');
+  document.getElementById('perfil-cidade').textContent = 'De ' + (usuario.cidade||'Caxias do Sul, RS');
+  document.getElementById('perfil-tipo').textContent = usuario.tipo === 'padrinho' ? 'Padrinho voluntário' : 'Afilhado — buscando um padrinho';
+  const tags = usuario.interesses.length ? usuario.interesses : ['Padrinho','Eventos Sociais','Emprego'];
+  document.getElementById('perfil-tags').innerHTML = tags.map(t => `<span class="tag on">${t}</span>`).join('');
+  const insc = document.getElementById('perfil-inscricoes');
+  if (inscricoes.length === 0) {
+    insc.innerHTML = '<div class="card-title">Nenhuma inscrição ainda</div><div class="card-sub">Confirme presença em eventos para ver aqui</div>';
+  } else {
+    insc.innerHTML = inscricoes.map(i => `<div style="margin-bottom:6px;"><div class="card-title">${eventos[i].titulo}</div><div class="card-sub">${eventos[i].data}</div></div>`).join('');
+  }
+}
+
+function logout() {
+  usuario = { nome:'', email:'', cidade:'', uni:'', curso:'', semestre:'', tipo:'', interesses:[] };
+  inscricoes = [];
+  document.getElementById('c-nome').value = '';
+  document.getElementById('c-email').value = '';
+  document.getElementById('c-senha').value = '';
+  document.getElementById('c-cidade').value = '';
+  goTo('screen-splash');
+}
+
+// =================== UTILS ===================
+function iniciais(nome) {
+  return nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+}
+
+// Init
+filtrarPadrinhos();
+renderEventos('Todos');
+renderEmprego('Todos');
+</script>
+</body>
+</html>
